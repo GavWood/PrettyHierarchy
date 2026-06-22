@@ -11,6 +11,8 @@ Pretty Hierarchy lets you:
 - Open scripts directly from the Hierarchy with a double click.
 - Configure everything through a simple context menu.
 
+<img width="829" height="824" alt="image" src="https://github.com/user-attachments/assets/90bcd4e7-fa8d-4e8b-b36a-41359f6eb398" />
+
 ---
 
 ## Features
