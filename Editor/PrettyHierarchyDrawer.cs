@@ -13,8 +13,13 @@ public static partial class PrettyHierarchy
 
     static PrettyHierarchy()
     {
+#if UNITY_6000_4_OR_NEWER
+        EditorApplication.hierarchyWindowItemByEntityIdOnGUI -= HierarchyItemOnGUI;
+        EditorApplication.hierarchyWindowItemByEntityIdOnGUI += HierarchyItemOnGUI;
+#else
         EditorApplication.hierarchyWindowItemOnGUI -= HierarchyItemOnGUI;
         EditorApplication.hierarchyWindowItemOnGUI += HierarchyItemOnGUI;
+#endif
 
         EditorApplication.projectChanged -= OnProjectChanged;
         EditorApplication.projectChanged += OnProjectChanged;
@@ -63,6 +68,13 @@ public static partial class PrettyHierarchy
         Debug.Log($"Created Pretty Hierarchy settings automatically at '{assetPath}'.");
     }
 
+#if UNITY_6000_4_OR_NEWER
+    private static void HierarchyItemOnGUI(EntityId entityId, Rect selectionRect)
+    {
+        GameObject obj = EditorUtility.EntityIdToObject(entityId) as GameObject;
+        DrawHierarchyItem(obj, selectionRect);
+    }
+#else
     private static void HierarchyItemOnGUI(int instanceID, Rect selectionRect)
     {
 #pragma warning disable CS0618
@@ -71,19 +83,17 @@ public static partial class PrettyHierarchy
 
         DrawHierarchyItem(obj, selectionRect);
     }
+#endif
 
     private static void DrawHierarchyItem(GameObject obj, Rect selectionRect)
     {
-        if (settings == null)
-            return;
-
-        if (obj == null)
+        if (settings == null || obj == null)
             return;
 
         HierarchyIconSettings.ObjectIconEntry objectEntry = settings.GetObjectEntry(obj);
         MonoScript script = GetFirstNonUnityScript(obj);
 
-        Rect iconSlotRect = new(
+        Rect iconSlotRect = new Rect(
             selectionRect.xMin,
             selectionRect.y,
             IconSlotSize,
@@ -128,7 +138,7 @@ public static partial class PrettyHierarchy
 
             if (icon != null)
             {
-                Rect iconRect = new(
+                Rect iconRect = new Rect(
                     iconSlotRect.x + 1f,
                     iconSlotRect.y + 1f,
                     14f,
@@ -226,7 +236,7 @@ public static partial class PrettyHierarchy
 
     private static void DrawIcon(Rect slotRect, Texture2D icon)
     {
-        Rect coverRect = new(
+        Rect coverRect = new Rect(
             slotRect.x,
             slotRect.y,
             IconSlotSize,
@@ -238,7 +248,7 @@ public static partial class PrettyHierarchy
 
         EditorGUI.DrawRect(coverRect, coverColour);
 
-        Rect iconRect = new(
+        Rect iconRect = new Rect(
             coverRect.x + 1f,
             coverRect.y + 1f,
             14f,
@@ -262,7 +272,7 @@ public static partial class PrettyHierarchy
         if (!slotRect.Contains(current.mousePosition))
             return;
 
-        Rect iconRect = new(
+        Rect iconRect = new Rect(
             slotRect.x + 2f,
             slotRect.y + 2f,
             12f,
