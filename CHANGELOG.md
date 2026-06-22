@@ -2,7 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
-## [1.0.0] - Latest Release
+## [1.0.1] - Latest Release
+
+### Fixed
+- Added support for Unity 6000.4+ using the EntityId hierarchy callback.
+- Retained compatibility with older Unity versions using the legacy hierarchy callback.
+
+## [1.0.0]
 
 ### Changed
 - Now uses `OnValidate` for improved automatic updates.
