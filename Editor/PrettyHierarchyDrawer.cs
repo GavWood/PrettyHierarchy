@@ -13,8 +13,8 @@ public static partial class PrettyHierarchy
 
     static PrettyHierarchy()
     {
-        EditorApplication.hierarchyWindowItemByEntityIdOnGUI -= HierarchyItemOnGUI;
-        EditorApplication.hierarchyWindowItemByEntityIdOnGUI += HierarchyItemOnGUI;
+        EditorApplication.hierarchyWindowItemOnGUI -= HierarchyItemOnGUI;
+        EditorApplication.hierarchyWindowItemOnGUI += HierarchyItemOnGUI;
 
         EditorApplication.projectChanged -= OnProjectChanged;
         EditorApplication.projectChanged += OnProjectChanged;
@@ -63,12 +63,19 @@ public static partial class PrettyHierarchy
         Debug.Log($"Created Pretty Hierarchy settings automatically at '{assetPath}'.");
     }
 
-    private static void HierarchyItemOnGUI(EntityId entityId, Rect selectionRect)
+    private static void HierarchyItemOnGUI(int instanceID, Rect selectionRect)
+    {
+#pragma warning disable CS0618
+        GameObject obj = EditorUtility.InstanceIDToObject(instanceID) as GameObject;
+#pragma warning restore CS0618
+
+        DrawHierarchyItem(obj, selectionRect);
+    }
+
+    private static void DrawHierarchyItem(GameObject obj, Rect selectionRect)
     {
         if (settings == null)
             return;
-
-        GameObject obj = EditorUtility.EntityIdToObject(entityId) as GameObject;
 
         if (obj == null)
             return;
