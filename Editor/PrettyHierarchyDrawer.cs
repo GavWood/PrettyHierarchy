@@ -1,0 +1,270 @@
+// PrettyHierarchyDrawer.cs
+using System;
+using UnityEditor;
+using UnityEngine;
+
+[InitializeOnLoad]
+public static partial class PrettyHierarchy
+{
+    private const float IconSlotSize = 16f;
+
+    private static HierarchyIconSettings settings;
+    private static GUIStyle separatorLabelStyle;
+
+    static PrettyHierarchy()
+    {
+        EditorApplication.hierarchyWindowItemByEntityIdOnGUI -= HierarchyItemOnGUI;
+        EditorApplication.hierarchyWindowItemByEntityIdOnGUI += HierarchyItemOnGUI;
+
+        EditorApplication.projectChanged -= OnProjectChanged;
+        EditorApplication.projectChanged += OnProjectChanged;
+
+        LoadSettings();
+
+        EditorApplication.RepaintHierarchyWindow();
+    }
+
+    private static void OnProjectChanged()
+    {
+        LoadSettings();
+        EditorApplication.RepaintHierarchyWindow();
+    }
+
+    private static void LoadSettings()
+    {
+        string[] guids = AssetDatabase.FindAssets("t:HierarchyIconSettings");
+
+        if (guids.Length == 0)
+        {
+            CreateSettingsAsset();
+            return;
+        }
+
+        if (guids.Length > 1)
+            Debug.LogWarning($"Multiple Pretty Hierarchy settings assets found ({guids.Length}). Using the first one.");
+
+        string path = AssetDatabase.GUIDToAssetPath(guids[0]);
+        settings = AssetDatabase.LoadAssetAtPath<HierarchyIconSettings>(path);
+    }
+
+    private static void CreateSettingsAsset()
+    {
+        const string folderPath = "Assets/Editor";
+        const string assetPath = "Assets/Editor/PrettyHierarchySettings.asset";
+
+        if (!AssetDatabase.IsValidFolder(folderPath))
+            AssetDatabase.CreateFolder("Assets", "Editor");
+
+        settings = ScriptableObject.CreateInstance<HierarchyIconSettings>();
+
+        AssetDatabase.CreateAsset(settings, assetPath);
+        AssetDatabase.SaveAssets();
+
+        Debug.Log($"Created Pretty Hierarchy settings automatically at '{assetPath}'.");
+    }
+
+    private static void HierarchyItemOnGUI(EntityId entityId, Rect selectionRect)
+    {
+        if (settings == null)
+            return;
+
+        GameObject obj = EditorUtility.EntityIdToObject(entityId) as GameObject;
+
+        if (obj == null)
+            return;
+
+        HierarchyIconSettings.ObjectIconEntry objectEntry = settings.GetObjectEntry(obj);
+        MonoScript script = GetFirstNonUnityScript(obj);
+
+        Rect iconSlotRect = new(
+            selectionRect.xMin,
+            selectionRect.y,
+            IconSlotSize,
+            selectionRect.height);
+
+        if (objectEntry != null && objectEntry.isSeparator)
+        {
+            DrawSeparator(selectionRect, obj, objectEntry, iconSlotRect);
+            HandleRowClick(selectionRect, iconSlotRect, obj, script);
+            return;
+        }
+
+        Texture2D icon = objectEntry != null
+            ? objectEntry.GetFinalIcon()
+            : GetComponentFallbackIcon(obj);
+
+        if (icon != null)
+            DrawIcon(iconSlotRect, icon);
+        else
+            DrawAddIconHint(iconSlotRect);
+
+        HandleRowClick(selectionRect, iconSlotRect, obj, script);
+    }
+
+    private static void DrawSeparator(
+        Rect selectionRect,
+        GameObject obj,
+        HierarchyIconSettings.ObjectIconEntry entry,
+        Rect iconSlotRect)
+    {
+        EditorGUI.DrawRect(selectionRect, entry.separatorColor);
+
+        EditorGUI.DrawRect(
+            iconSlotRect,
+            EditorGUIUtility.isProSkin
+                ? new Color(0f, 0f, 0f, 0.22f)
+                : new Color(0f, 0f, 0f, 0.14f));
+
+        if (entry.showSeparatorIcon)
+        {
+            Texture2D icon = entry.GetFinalIcon();
+
+            if (icon != null)
+            {
+                Rect iconRect = new(
+                    iconSlotRect.x + 1f,
+                    iconSlotRect.y + 1f,
+                    14f,
+                    14f);
+
+                GUI.DrawTexture(iconRect, icon, ScaleMode.ScaleToFit, true);
+            }
+        }
+
+        separatorLabelStyle ??= new GUIStyle(EditorStyles.boldLabel)
+        {
+            alignment = TextAnchor.MiddleCenter,
+            fontStyle = FontStyle.Bold,
+            clipping = TextClipping.Clip,
+            normal = new GUIStyleState
+            {
+                textColor = Color.white
+            }
+        };
+
+        EditorGUI.LabelField(selectionRect, obj.name, separatorLabelStyle);
+    }
+
+    private static Texture2D GetComponentFallbackIcon(GameObject obj)
+    {
+        var entries = settings.Entries;
+
+        if (entries == null || entries.Count == 0)
+            return null;
+
+        for (int i = 0; i < entries.Count; i++)
+        {
+            HierarchyIconSettings.ScriptIconEntry entry = entries[i];
+
+            if (entry == null)
+                continue;
+
+            Type type = entry.GetComponentType();
+
+            if (type == null)
+                continue;
+
+            if (obj.GetComponent(type) == null)
+                continue;
+
+            return entry.GetFinalIcon();
+        }
+
+        return null;
+    }
+
+    private static MonoScript GetFirstNonUnityScript(GameObject obj)
+    {
+        MonoBehaviour[] behaviours = obj.GetComponents<MonoBehaviour>();
+
+        for (int i = 0; i < behaviours.Length; i++)
+        {
+            MonoBehaviour behaviour = behaviours[i];
+
+            if (behaviour == null)
+                continue;
+
+            MonoScript script = MonoScript.FromMonoBehaviour(behaviour);
+
+            if (script == null)
+                continue;
+
+            string path = AssetDatabase.GetAssetPath(script);
+
+            if (string.IsNullOrEmpty(path))
+                continue;
+
+            if (IsUnityScriptPath(path))
+                continue;
+
+            return script;
+        }
+
+        return null;
+    }
+
+    private static bool IsUnityScriptPath(string path)
+    {
+        if (path.StartsWith("Assets/", StringComparison.Ordinal))
+            return false;
+
+        if (path.StartsWith("Packages/com.unity.", StringComparison.Ordinal))
+            return true;
+
+        if (path.StartsWith("Packages/com.unity3d.", StringComparison.Ordinal))
+            return true;
+
+        return false;
+    }
+
+    private static void DrawIcon(Rect slotRect, Texture2D icon)
+    {
+        Rect coverRect = new(
+            slotRect.x,
+            slotRect.y,
+            IconSlotSize,
+            slotRect.height);
+
+        Color coverColour = EditorGUIUtility.isProSkin
+            ? new Color(0.219f, 0.219f, 0.219f, 1f)
+            : new Color(0.76f, 0.76f, 0.76f, 1f);
+
+        EditorGUI.DrawRect(coverRect, coverColour);
+
+        Rect iconRect = new(
+            coverRect.x + 1f,
+            coverRect.y + 1f,
+            14f,
+            14f);
+
+        Color previous = GUI.color;
+
+        GUI.color = EditorGUIUtility.isProSkin
+            ? new Color(1f, 1f, 1f, 0.78f)
+            : new Color(1f, 1f, 1f, 0.88f);
+
+        GUI.DrawTexture(iconRect, icon, ScaleMode.ScaleToFit, true);
+
+        GUI.color = previous;
+    }
+
+    private static void DrawAddIconHint(Rect slotRect)
+    {
+        Event current = Event.current;
+
+        if (!slotRect.Contains(current.mousePosition))
+            return;
+
+        Rect iconRect = new(
+            slotRect.x + 2f,
+            slotRect.y + 2f,
+            12f,
+            12f);
+
+        Color previous = GUI.color;
+
+        GUI.color = new Color(1f, 1f, 1f, 0.35f);
+        GUI.Label(iconRect, "+");
+        GUI.color = previous;
+    }
+}

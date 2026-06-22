@@ -1,0 +1,28 @@
+{
+  "name": "com.baawolf.prettyhierarchy",
+  "displayName": "PrettyHierarchy",
+  "version": "1.0.0",
+  "unity": "2021.3",
+  "description": "Organise large Unity scenes with custom hierarchy icons, coloured separators, and automatic component icons.\n\nInteraction:\n• Right-click the left icon area of any GameObject in the Hierarchy to open the Pretty Hierarchy menu (an icon does not need to be present).\n• Double-click an icon to open the first attached user script.\n\nSupports custom textures, built-in Unity icons, separator presets, and component-based icon assignment.",
+  "keywords": [
+    "unity",
+    "unity3d",
+    "upm",
+    "baawolf",
+    "utility"
+  ],
+  "homepage": "https://github.com/gavwood/PrettyHierarchy.git",
+  "bugs": {
+    "url": "https://github.com/gavwood/PrettyHierarchy/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/baawolf/PrettyHierarchy.git"
+  },
+  "license": "MIT",
+  "author": "BaaWolf (https://baawolf.com)",
+  "changelogUrl": "https://github.com/gavwood/PrettyHierarchy/blob/main/CHANGELOG.md",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}
