@@ -7,6 +7,8 @@ All notable changes to this project will be documented in this file.
 This will remember colours across scenes.
 i.e., make a camera called MyCamera. Save its scene as scene2 and the colours persist.
 
+Removes open script from inside menu. Double click icon.
+
 ## [1.0.1] - Better Unity compatibility
 
 ### Fixed
