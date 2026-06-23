@@ -22,7 +22,7 @@ public sealed class HierarchyIconSettings : ScriptableObject
         Anchor
     }
 
-        public static Texture2D GetBuiltinIcon(BuiltinIconType type)
+    public static Texture2D GetBuiltinIcon(BuiltinIconType type)
     {
         return type switch
         {
@@ -44,6 +44,7 @@ public sealed class HierarchyIconSettings : ScriptableObject
     public sealed class ObjectIconEntry
     {
         public string globalObjectId;
+        public string hierarchyPath;
 
         [Header("Icon")]
         public Texture2D icon;
@@ -145,15 +146,30 @@ public sealed class HierarchyIconSettings : ScriptableObject
 
     public ObjectIconEntry GetOrCreateObjectEntry(GameObject obj)
     {
-        string key = GetObjectKey(obj);
-        ObjectIconEntry existing = GetObjectEntry(key);
+        if (obj == null)
+            return null;
+
+        string globalKey = GetGlobalObjectKey(obj);
+        string pathKey = GetHierarchyPath(obj);
+
+        ObjectIconEntry existing = GetObjectEntry(obj);
 
         if (existing != null)
+        {
+            if (string.IsNullOrEmpty(existing.globalObjectId))
+                existing.globalObjectId = globalKey;
+
+            if (string.IsNullOrEmpty(existing.hierarchyPath))
+                existing.hierarchyPath = pathKey;
+
+            EditorUtility.SetDirty(this);
             return existing;
+        }
 
         ObjectIconEntry created = new()
         {
-            globalObjectId = key,
+            globalObjectId = globalKey,
+            hierarchyPath = pathKey,
             builtinIcon = BuiltinIconType.None,
             separatorColor = new Color(0.35f, 0.35f, 0.35f, 1f)
         };
@@ -166,7 +182,18 @@ public sealed class HierarchyIconSettings : ScriptableObject
 
     public ObjectIconEntry GetObjectEntry(GameObject obj)
     {
-        return GetObjectEntry(GetObjectKey(obj));
+        if (obj == null)
+            return null;
+
+        string globalKey = GetGlobalObjectKey(obj);
+        string pathKey = GetHierarchyPath(obj);
+
+        ObjectIconEntry globalMatch = GetObjectEntryByGlobalId(globalKey);
+
+        if (globalMatch != null)
+            return globalMatch;
+
+        return GetObjectEntryByPath(pathKey);
     }
 
     public void ClearObjectIcon(GameObject obj)
@@ -200,16 +227,14 @@ public sealed class HierarchyIconSettings : ScriptableObject
         if (obj == null)
             return;
 
-        string globalKey = GetObjectKey(obj);
-        string scenePathKey = GetScenePathKey(obj);
-        string nameKey = obj.name;
+        string globalKey = GetGlobalObjectKey(obj);
+        string pathKey = GetHierarchyPath(obj);
 
         objectEntries.RemoveAll(entry =>
             entry == null ||
+            string.IsNullOrEmpty(entry.globalObjectId) && string.IsNullOrEmpty(entry.hierarchyPath) ||
             entry.globalObjectId == globalKey ||
-            entry.globalObjectId == scenePathKey ||
-            entry.globalObjectId == nameKey ||
-            string.IsNullOrEmpty(entry.globalObjectId));
+            EntryCanFallbackToPath(entry) && entry.hierarchyPath == pathKey);
 
         EditorUtility.SetDirty(this);
         EditorApplication.RepaintHierarchyWindow();
@@ -228,9 +253,9 @@ public sealed class HierarchyIconSettings : ScriptableObject
         EditorApplication.RepaintHierarchyWindow();
     }
 
-    private ObjectIconEntry GetObjectEntry(string key)
+    private ObjectIconEntry GetObjectEntryByGlobalId(string globalKey)
     {
-        if (string.IsNullOrEmpty(key))
+        if (string.IsNullOrEmpty(globalKey))
             return null;
 
         for (int i = 0; i < objectEntries.Count; i++)
@@ -240,14 +265,58 @@ public sealed class HierarchyIconSettings : ScriptableObject
             if (entry == null)
                 continue;
 
-            if (entry.globalObjectId == key)
+            if (entry.globalObjectId == globalKey)
                 return entry;
         }
 
         return null;
     }
 
-    private static string GetObjectKey(GameObject obj)
+    private ObjectIconEntry GetObjectEntryByPath(string pathKey)
+    {
+        if (string.IsNullOrEmpty(pathKey))
+            return null;
+
+        for (int i = 0; i < objectEntries.Count; i++)
+        {
+            ObjectIconEntry entry = objectEntries[i];
+
+            if (entry == null)
+                continue;
+
+            if (entry.hierarchyPath == pathKey)
+                return entry;
+        }
+
+        return null;
+    }
+
+    private bool EntryCanFallbackToPath(ObjectIconEntry entry)
+    {
+        if (entry == null)
+            return false;
+
+        if (string.IsNullOrEmpty(entry.hierarchyPath))
+            return false;
+
+        if (string.IsNullOrEmpty(entry.globalObjectId))
+            return true;
+
+        return !GlobalObjectIdResolves(entry.globalObjectId);
+    }
+
+    private static bool GlobalObjectIdResolves(string globalObjectIdText)
+    {
+        if (string.IsNullOrEmpty(globalObjectIdText))
+            return false;
+
+        if (!GlobalObjectId.TryParse(globalObjectIdText, out GlobalObjectId globalObjectId))
+            return false;
+
+        return GlobalObjectId.GlobalObjectIdentifierToObjectSlow(globalObjectId) != null;
+    }
+
+    private static string GetGlobalObjectKey(GameObject obj)
     {
         if (obj == null)
             return string.Empty;
@@ -256,7 +325,7 @@ public sealed class HierarchyIconSettings : ScriptableObject
         return globalObjectId.ToString();
     }
 
-    private static string GetScenePathKey(GameObject obj)
+    private static string GetHierarchyPath(GameObject obj)
     {
         if (obj == null)
             return string.Empty;
@@ -270,7 +339,7 @@ public sealed class HierarchyIconSettings : ScriptableObject
             current = current.parent;
         }
 
-        return obj.scene.path + "::" + path;
+        return path;
     }
 
     private void OnValidate()

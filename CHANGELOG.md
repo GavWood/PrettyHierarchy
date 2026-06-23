@@ -2,7 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
-## [1.0.1] - Latest Release
+## [1.0.2] - Intelligent Saving
+
+This will remember colours across scenes.
+i.e., make a camera called MyCamera. Save its scene as scene2 and the colours persist.
+
+## [1.0.1] - Better Unity compatibility
 
 ### Fixed
 - Added support for Unity 6000.4+ using the EntityId hierarchy callback.

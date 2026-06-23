@@ -286,13 +286,6 @@ public static partial class PrettyHierarchy
             using (new EditorGUI.DisabledScope(true))
                 EditorGUILayout.ObjectField("Object", targetObject, typeof(GameObject), true);
 
-            using (new EditorGUI.DisabledScope(targetScript == null))
-            {
-                if (GUILayout.Button("Open Script"))
-                    OpenScript(targetScript);
-            }
-
-            EditorGUILayout.Space(8f);
             EditorGUILayout.LabelField("Icon", EditorStyles.boldLabel);
 
             DrawCustomTextureField();
