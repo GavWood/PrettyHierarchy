@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.0] - Changes to UI and the ability to set your own presets
+
+Ability to set your own presets.
+Made the UI more ergonomic
+
 ## [1.0.2] - Intelligent Saving
 
 This will remember colours across scenes.

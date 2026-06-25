@@ -1,125 +1,91 @@
+// PrettyHierarchy.ContextMenu.cs
 using UnityEditor;
 using UnityEngine;
 
 public static partial class PrettyHierarchy
 {
     private sealed class BuiltinIconDropdown : EditorWindow
-{
-    private HierarchyIconSettings.BuiltinIconType selectedType;
-    private System.Action<HierarchyIconSettings.BuiltinIconType> onSelected;
-
-    public static void Open(
-        Rect activatorRect,
-        HierarchyIconSettings.BuiltinIconType currentType,
-        System.Action<HierarchyIconSettings.BuiltinIconType> selectedCallback)
     {
-        BuiltinIconDropdown window = CreateInstance<BuiltinIconDropdown>();
+        private HierarchyIconSettings.BuiltinIconType selectedType;
+        private System.Action<HierarchyIconSettings.BuiltinIconType> onSelected;
 
-        window.selectedType = currentType;
-        window.onSelected = selectedCallback;
-
-        Rect screenRect = new(
-            GUIUtility.GUIToScreenPoint(activatorRect.position),
-            activatorRect.size);
-
-        window.ShowAsDropDown(
-            screenRect,
-            new Vector2(220f, BuiltinTypes.Length * 22f + 4f));
-    }
-
-    private void OnGUI()
-    {
-        for (int i = 0; i < BuiltinTypes.Length; i++)
-            DrawRow(BuiltinTypes[i]);
-    }
-
-    private void DrawRow(HierarchyIconSettings.BuiltinIconType type)
-    {
-        Rect rowRect = GUILayoutUtility.GetRect(
-            1f,
-            22f,
-            GUILayout.ExpandWidth(true),
-            GUILayout.Height(22f));
-
-        if (Event.current.type == EventType.Repaint)
+        public static void Open(
+            Rect activatorRect,
+            HierarchyIconSettings.BuiltinIconType currentType,
+            System.Action<HierarchyIconSettings.BuiltinIconType> selectedCallback)
         {
-            bool isSelected = selectedType == type;
+            BuiltinIconDropdown window = CreateInstance<BuiltinIconDropdown>();
 
-            if (isSelected)
-                EditorGUI.DrawRect(rowRect, new Color(0.24f, 0.48f, 0.90f, 0.65f));
-            else if (rowRect.Contains(Event.current.mousePosition))
-                EditorGUI.DrawRect(rowRect, new Color(1f, 1f, 1f, 0.08f));
+            window.selectedType = currentType;
+            window.onSelected = selectedCallback;
+
+            Rect screenRect = new(
+                GUIUtility.GUIToScreenPoint(activatorRect.position),
+                activatorRect.size);
+
+            window.ShowAsDropDown(
+                screenRect,
+                new Vector2(260f, BuiltinTypes.Length * 24f + 8f));
         }
 
-        Texture2D icon = HierarchyIconSettings.GetBuiltinIcon(type);
-
-        Rect iconRect = new(
-            rowRect.x + 6f,
-            rowRect.y + 3f,
-            16f,
-            16f);
-
-        Rect labelRect = new(
-            iconRect.xMax + 8f,
-            rowRect.y,
-            rowRect.width - iconRect.width - 20f,
-            rowRect.height);
-
-        if (type == HierarchyIconSettings.BuiltinIconType.None)
+        private void OnGUI()
         {
-            GUIStyle noneStyle = new(EditorStyles.label)
+            for (int i = 0; i < BuiltinTypes.Length; i++)
+                DrawRow(BuiltinTypes[i]);
+        }
+
+        private void DrawRow(HierarchyIconSettings.BuiltinIconType type)
+        {
+            Rect rowRect = GUILayoutUtility.GetRect(
+                1f,
+                24f,
+                GUILayout.ExpandWidth(true),
+                GUILayout.Height(24f));
+
+            if (Event.current.type == EventType.Repaint)
             {
-                alignment = TextAnchor.MiddleCenter,
-                fontStyle = FontStyle.Bold
-            };
+                bool isSelected = selectedType == type;
 
-            EditorGUI.LabelField(iconRect, "×", noneStyle);
-        }
-        else if (icon != null)
-        {
-            GUI.DrawTexture(iconRect, icon, ScaleMode.ScaleToFit, true);
-        }
+                if (isSelected)
+                    EditorGUI.DrawRect(rowRect, new Color(0.24f, 0.48f, 0.90f, 0.65f));
+                else if (rowRect.Contains(Event.current.mousePosition))
+                    EditorGUI.DrawRect(rowRect, new Color(1f, 1f, 1f, 0.08f));
+            }
 
-        EditorGUI.LabelField(labelRect, type.ToString());
+            Texture2D icon = HierarchyIconSettings.GetBuiltinIcon(type);
 
-        if (Event.current.type == EventType.MouseDown &&
-            Event.current.button == 0 &&
-            rowRect.Contains(Event.current.mousePosition))
-        {
-            onSelected?.Invoke(type);
-            Event.current.Use();
-            Close();
+            Rect iconRect = new(rowRect.x + 8f, rowRect.y + 4f, 16f, 16f);
+            Rect labelRect = new(iconRect.xMax + 10f, rowRect.y, rowRect.width - iconRect.width - 24f, rowRect.height);
+
+            if (type == HierarchyIconSettings.BuiltinIconType.None)
+            {
+                GUIStyle noneStyle = new(EditorStyles.label)
+                {
+                    alignment = TextAnchor.MiddleCenter,
+                    fontStyle = FontStyle.Bold
+                };
+
+                EditorGUI.LabelField(iconRect, "×", noneStyle);
+            }
+            else if (icon != null)
+            {
+                GUI.DrawTexture(iconRect, icon, ScaleMode.ScaleToFit, true);
+            }
+
+            EditorGUI.LabelField(labelRect, type.ToString());
+
+            if (Event.current.type == EventType.MouseDown &&
+                Event.current.button == 0 &&
+                rowRect.Contains(Event.current.mousePosition))
+            {
+                onSelected?.Invoke(type);
+                Event.current.Use();
+                Close();
+            }
         }
     }
-}
 
-    private readonly struct SeparatorPreset
-    {
-        public readonly string Label;
-        public readonly Color Colour;
-        public readonly bool ClearsSeparator;
-
-        public SeparatorPreset(string label, Color colour, bool clearsSeparator = false)
-        {
-            Label = label;
-            Colour = colour;
-            ClearsSeparator = clearsSeparator;
-        }
-    }
-
-    private static readonly SeparatorPreset[] SeparatorPresets =
-    {
-        new("None", Color.clear, true),
-        new("Debug", new Color(0.15f, 0.15f, 0.15f, 1f)),
-        new("Networking", new Color(0.20f, 0.32f, 0.65f, 1f)),
-        new("Game Flow", new Color(0.42f, 0.24f, 0.58f, 1f)),
-        new("Scene", new Color(0.20f, 0.48f, 0.32f, 1f)),
-        new("Config", new Color(0.65f, 0.35f, 0.15f, 1f)),
-        new("Permissions", new Color(0.58f, 0.20f, 0.20f, 1f)),
-        new("UI", new Color(0.15f, 0.45f, 0.55f, 1f))
-    };
-
-    private static readonly HierarchyIconSettings.BuiltinIconType[] BuiltinTypes =
+    private static HierarchyIconSettings.BuiltinIconType[] BuiltinTypes =
     {
         HierarchyIconSettings.BuiltinIconType.None,
         HierarchyIconSettings.BuiltinIconType.Android,
@@ -136,31 +102,14 @@ public static partial class PrettyHierarchy
 
     private static GUIContent[] builtinIconContents;
 
-    private static void HandleRowClick(
-        Rect rowRect,
-        Rect iconRect,
-        GameObject obj,
-        MonoScript script)
+    private static void HandleRowClick(Rect rowRect, Rect iconRect, GameObject obj, MonoScript script)
     {
         Event current = Event.current;
 
-        Rect iconClickRect = new(
-            iconRect.x,
-            iconRect.y,
-            iconRect.width,
-            iconRect.height);
-
-        if (current.type == EventType.ContextClick &&
-            iconClickRect.Contains(current.mousePosition))
+        if (current.type == EventType.ContextClick && iconRect.Contains(current.mousePosition))
         {
             Selection.activeGameObject = obj;
-
-            PrettyHierarchyDialog.Open(
-                settings,
-                obj,
-                script,
-                SeparatorPresets);
-
+            PrettyHierarchyDialog.Open(settings, obj, script);
             current.Use();
             return;
         }
@@ -204,66 +153,84 @@ public static partial class PrettyHierarchy
 
     private sealed class PrettyHierarchyDialog : EditorWindow
     {
+        private const float WindowWidth = 620f;
+        private const float HeaderHeight = 150f;
+        private const float PresetRowHeight = 54f;
+        private const float PreviewWidth = 70f;
+        private const float DeleteButtonWidth = 24f;
+        private const float FooterHeight = 48f;
+        private const float MaxWindowHeight = 720f;
+
+        private const float ColumnAWidth = 180f;
+        private const float ColumnBWidth = 180f;
+        private const float ColumnCWidth = 110f;
+        private const float ColumnDWidth = 72f;
+        private const float ColumnGap = 4f;
+
         private HierarchyIconSettings targetSettings;
         private GameObject targetObject;
         private MonoScript targetScript;
         private HierarchyIconSettings.ObjectIconEntry targetEntry;
-        private SeparatorPreset[] presets;
+        private Vector2 scroll;
 
-        public static void Open(
-            HierarchyIconSettings settings,
-            GameObject obj,
-            MonoScript script,
-            SeparatorPreset[] separatorPresets)
+        public static void Open(HierarchyIconSettings settings, GameObject obj, MonoScript script)
         {
-            PrettyHierarchyDialog window = GetWindow<PrettyHierarchyDialog>(
-                true,
-                "Pretty Hierarchy",
-                true);
+            PrettyHierarchyDialog window = CreateInstance<PrettyHierarchyDialog>();
 
-            window.minSize = new Vector2(360f, 430f);
+            float windowHeight = CalculateWindowHeight(settings);
 
-            window.SetTarget(
-                settings,
-                obj,
-                script,
-                separatorPresets);
+            window.minSize = new Vector2(WindowWidth, windowHeight);
+            window.maxSize = new Vector2(WindowWidth, windowHeight);
+            window.position = new Rect(360f, 80f, WindowWidth, windowHeight);
 
-            window.Repaint();
+            window.SetTarget(settings, obj, script);
+
+            window.ShowUtility();
             window.Focus();
         }
 
-        private void SetTarget(
-            HierarchyIconSettings newSettings,
-            GameObject newObject,
-            MonoScript newScript,
-            SeparatorPreset[] newPresets)
+        private static float CalculateWindowHeight(HierarchyIconSettings settings)
+        {
+            int presetCount = settings != null ? settings.ColourPresets.Count : 0;
+
+            return Mathf.Clamp(
+                HeaderHeight + FooterHeight + 32f + (presetCount * (PresetRowHeight + 6f)),
+                360f,
+                MaxWindowHeight);
+        }
+
+        private void SetTarget(HierarchyIconSettings newSettings, GameObject newObject, MonoScript newScript)
         {
             targetSettings = newSettings;
             targetObject = newObject;
             targetScript = newScript;
-            presets = newPresets ?? SeparatorPresets;
             targetEntry = targetSettings.GetOrCreateObjectEntry(targetObject);
 
+            ResizeToContent();
             Repaint();
+        }
+
+        private void ResizeToContent()
+        {
+            float windowHeight = CalculateWindowHeight(targetSettings);
+
+            minSize = new Vector2(WindowWidth, windowHeight);
+            maxSize = new Vector2(WindowWidth, windowHeight);
+
+            Rect currentPosition = position;
+            currentPosition.width = WindowWidth;
+            currentPosition.height = windowHeight;
+            position = currentPosition;
         }
 
         private void OnSelectionChange()
         {
-            if (Selection.activeGameObject == null)
-                return;
-
-            if (targetSettings == null)
+            if (Selection.activeGameObject == null || targetSettings == null)
                 return;
 
             MonoScript script = GetFirstNonUnityScript(Selection.activeGameObject);
 
-            SetTarget(
-                targetSettings,
-                Selection.activeGameObject,
-                script,
-                SeparatorPresets);
-
+            SetTarget(targetSettings, Selection.activeGameObject, script);
             Repaint();
         }
 
@@ -275,47 +242,97 @@ public static partial class PrettyHierarchy
                 return;
             }
 
-            EditorGUILayout.Space(8f);
-
-            EditorGUILayout.HelpBox(
-                "Context click to open this menu.\nDouble click the icon area to open the first user script.",
-                MessageType.Info);
+            scroll = EditorGUILayout.BeginScrollView(scroll);
 
             EditorGUILayout.Space(6f);
 
             using (new EditorGUI.DisabledScope(true))
                 EditorGUILayout.ObjectField("Object", targetObject, typeof(GameObject), true);
 
-            EditorGUILayout.LabelField("Icon", EditorStyles.boldLabel);
+            EditorGUILayout.Space(6f);
+            EditorGUILayout.LabelField("Current Row (Choose icon | Built-in Icon | Colour)", EditorStyles.boldLabel);
 
-            DrawCustomTextureField();
-            DrawBuiltinIconField();
-
-            EditorGUILayout.Space(8f);
-            EditorGUILayout.LabelField("Separator", EditorStyles.boldLabel);
-
-            DrawSeparatorFields();
+            DrawCurrentRowCompact();
 
             EditorGUILayout.Space(8f);
-            EditorGUILayout.LabelField("Preset Colours", EditorStyles.boldLabel);
-            DrawPresetButtons();
+            EditorGUILayout.LabelField("Actions", EditorStyles.boldLabel);
+
+            DrawActionButtons();
+
+            EditorGUILayout.Space(10f);
+            EditorGUILayout.LabelField("Colour Presets", EditorStyles.boldLabel);
+
+            DrawPresetEditor();
+
+            EditorGUILayout.EndScrollView();
+        }
+
+        private void DrawCurrentRowCompact()
+        {
+            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+            EditorGUILayout.BeginHorizontal();
+
+            DrawIconField(ColumnAWidth);
+
+            GUILayout.Space(ColumnGap);
+
+            DrawBuiltinIconPopup(
+                GUIContent.none,
+                targetEntry.builtinIcon,
+                selectedType =>
+                {
+                    Undo.RecordObject(targetSettings, "Set Pretty Hierarchy Built-in Icon");
+
+                    targetEntry.builtinIcon = selectedType;
+                    targetEntry.icon = null;
+
+                    if (selectedType != HierarchyIconSettings.BuiltinIconType.None)
+                        targetEntry.isSeparator = true;
+
+                    targetEntry.showSeparatorIcon =
+                        selectedType != HierarchyIconSettings.BuiltinIconType.None;
+
+                    MarkDirty();
+                },
+                GUILayout.Width(ColumnBWidth));
+
+            GUILayout.Space(ColumnGap);
+
+            EditorGUI.BeginChangeCheck();
+
+            Color colour = EditorGUILayout.ColorField(
+                GUIContent.none,
+                targetEntry.separatorColor,
+                false,
+                true,
+                false,
+                GUILayout.Width(ColumnCWidth));
+
+            if (EditorGUI.EndChangeCheck())
+            {
+                Undo.RecordObject(targetSettings, "Change Pretty Hierarchy Colour");
+
+                targetEntry.separatorColor = colour;
+                targetEntry.isSeparator = true;
+
+                MarkDirty();
+            }
 
             GUILayout.FlexibleSpace();
 
-            EditorGUILayout.Space(8f);
-            DrawClearButtons();
-            EditorGUILayout.Space(8f);
+            EditorGUILayout.EndHorizontal();
+            EditorGUILayout.EndVertical();
         }
 
-        private void DrawCustomTextureField()
+        private void DrawIconField(float width)
         {
             EditorGUI.BeginChangeCheck();
 
-            Texture2D newIcon = EditorGUILayout.ObjectField(
-                "Custom Texture",
+            Texture2D newIcon = (Texture2D)EditorGUILayout.ObjectField(
                 targetEntry.icon,
                 typeof(Texture2D),
-                false) as Texture2D;
+                false,
+                GUILayout.Width(width));
 
             if (!EditorGUI.EndChangeCheck())
                 return;
@@ -328,199 +345,25 @@ public static partial class PrettyHierarchy
             {
                 targetEntry.builtinIcon = HierarchyIconSettings.BuiltinIconType.None;
                 targetEntry.isSeparator = true;
-                targetEntry.showSeparatorIcon = true;
             }
+
+            targetEntry.showSeparatorIcon =
+                targetEntry.icon != null ||
+                targetEntry.builtinIcon != HierarchyIconSettings.BuiltinIconType.None;
 
             MarkDirty();
         }
 
-        private void DrawBuiltinIconField()
-        {
-            Rect controlRect = EditorGUILayout.GetControlRect(
-                false,
-                EditorGUIUtility.singleLineHeight);
-
-            Rect labelRect = new(
-                controlRect.x,
-                controlRect.y,
-                EditorGUIUtility.labelWidth,
-                controlRect.height);
-
-            Rect dropdownRect = new(
-                controlRect.x + EditorGUIUtility.labelWidth,
-                controlRect.y,
-                controlRect.width - EditorGUIUtility.labelWidth,
-                controlRect.height);
-
-            EditorGUI.LabelField(labelRect, "Built-in Icon");
-
-            Texture2D selectedIcon =
-                HierarchyIconSettings.GetBuiltinIcon(targetEntry.builtinIcon);
-
-            GUIContent buttonContent = new(
-                targetEntry.builtinIcon.ToString(),
-                selectedIcon);
-
-            if (GUI.Button(dropdownRect, buttonContent, EditorStyles.popup))
-            {
-                BuiltinIconDropdown.Open(
-                    dropdownRect,
-                    targetEntry.builtinIcon,
-                    selectedType =>
-                    {
-                        Undo.RecordObject(
-                            targetSettings,
-                            "Set Pretty Hierarchy Built-in Icon");
-
-                        targetEntry.builtinIcon = selectedType;
-                        targetEntry.icon = null;
-
-                        if (selectedType != HierarchyIconSettings.BuiltinIconType.None)
-                        {
-                            targetEntry.isSeparator = true;
-                            targetEntry.showSeparatorIcon = true;
-                        }
-
-                        MarkDirty();
-                    });
-            }
-        }
-
-        private void DrawSeparatorFields()
-        {
-            EditorGUI.BeginChangeCheck();
-            bool showIcon = EditorGUILayout.Toggle("Show Icon", targetEntry.showSeparatorIcon);
-
-            if (EditorGUI.EndChangeCheck())
-            {
-                Undo.RecordObject(targetSettings, "Toggle Pretty Hierarchy Separator Icon");
-                targetEntry.showSeparatorIcon = showIcon;
-                MarkDirty();
-            }
-
-            EditorGUI.BeginChangeCheck();
-            Color colour = EditorGUILayout.ColorField("Colour", targetEntry.separatorColor);
-
-            if (EditorGUI.EndChangeCheck())
-            {
-                Undo.RecordObject(targetSettings, "Set Pretty Hierarchy Separator Colour");
-
-                targetEntry.isSeparator = true;
-                targetEntry.separatorColor = colour;
-
-                MarkDirty();
-            }
-        }
-
-        private void DrawPresetButtons()
-        {
-            presets ??= SeparatorPresets;
-
-            const int columns = 2;
-
-            for (int i = 0; i < presets.Length; i++)
-            {
-                if (i % columns == 0)
-                    EditorGUILayout.BeginHorizontal();
-
-                DrawPresetButton(presets[i]);
-
-                if (i % columns == columns - 1)
-                    EditorGUILayout.EndHorizontal();
-            }
-
-            if (presets.Length % columns != 0)
-                EditorGUILayout.EndHorizontal();
-        }
-
-        private void DrawPresetButton(SeparatorPreset preset)
-        {
-            Rect rect = GUILayoutUtility.GetRect(
-                1f,
-                24f,
-                GUILayout.ExpandWidth(true),
-                GUILayout.Height(24f));
-
-            if (GUI.Button(rect, GUIContent.none, EditorStyles.miniButton))
-            {
-                if (preset.ClearsSeparator)
-                {
-                    Undo.RecordObject(targetSettings, "Clear Pretty Hierarchy Separator");
-
-                    targetSettings.ClearObjectSeparator(targetObject);
-                    targetEntry = targetSettings.GetOrCreateObjectEntry(targetObject);
-
-                    MarkDirty();
-                    return;
-                }
-
-                Undo.RecordObject(
-                    targetSettings,
-                    $"Apply {preset.Label} Pretty Hierarchy Colour");
-
-                targetEntry.isSeparator = true;
-                targetEntry.separatorColor = preset.Colour;
-
-                MarkDirty();
-            }
-
-            Rect colourRect = new(
-                rect.x + 6f,
-                rect.y + 3f,
-                12f,
-                12f);
-
-            if (preset.ClearsSeparator)
-            {
-                EditorGUI.DrawRect(colourRect, Color.black);
-
-                GUIStyle crossStyle = new(EditorStyles.label)
-                {
-                    alignment = TextAnchor.MiddleCenter,
-                    fontStyle = FontStyle.Bold
-                };
-
-                EditorGUI.LabelField(
-                    colourRect,
-                    "×",
-                    crossStyle);
-            }
-            else
-            {
-                EditorGUI.DrawRect(colourRect, Color.black);
-
-                EditorGUI.DrawRect(
-                    new Rect(
-                        colourRect.x + 1f,
-                        colourRect.y + 1f,
-                        10f,
-                        10f),
-                    preset.Colour);
-            }
-
-            GUIStyle labelStyle = new(EditorStyles.label)
-            {
-                alignment = TextAnchor.MiddleCenter,
-                fontStyle = FontStyle.Normal
-            };
-
-            Rect labelRect = new(
-                rect.x,
-                rect.y - 3f,
-                rect.width,
-                rect.height);
-
-            EditorGUI.LabelField(
-                labelRect,
-                preset.Label,
-                labelStyle);
-        }
-
-        private void DrawClearButtons()
+        private void DrawActionButtons()
         {
             EditorGUILayout.BeginHorizontal();
 
-            if (GUILayout.Button("Clear Icon"))
+            if (GUILayout.Button("+ Preset", GUILayout.Width(ColumnAWidth), GUILayout.Height(22f)))
+                AddPreset();
+
+            GUILayout.Space(ColumnGap);
+
+            if (GUILayout.Button("Clear Icon", GUILayout.Width(ColumnBWidth), GUILayout.Height(22f)))
             {
                 Undo.RecordObject(targetSettings, "Clear Pretty Hierarchy Object Icon");
 
@@ -530,9 +373,21 @@ public static partial class PrettyHierarchy
                 MarkDirty();
             }
 
-            EditorGUILayout.EndHorizontal();
+            GUILayout.Space(ColumnGap);
 
-            if (GUILayout.Button("Clear Everything"))
+            if (GUILayout.Button("Clear Separator", GUILayout.Width(ColumnCWidth), GUILayout.Height(22f)))
+            {
+                Undo.RecordObject(targetSettings, "Clear Pretty Hierarchy Object Separator");
+
+                targetSettings.ClearObjectSeparator(targetObject);
+                targetEntry = targetSettings.GetOrCreateObjectEntry(targetObject);
+
+                MarkDirty();
+            }
+
+            GUILayout.Space(ColumnGap);
+
+            if (GUILayout.Button("Reset", GUILayout.Width(ColumnDWidth), GUILayout.Height(22f)))
             {
                 Undo.RecordObject(targetSettings, "Clear Pretty Hierarchy Entry");
 
@@ -540,6 +395,255 @@ public static partial class PrettyHierarchy
                 targetEntry = targetSettings.GetOrCreateObjectEntry(targetObject);
 
                 MarkDirty();
+            }
+
+            GUILayout.FlexibleSpace();
+
+            EditorGUILayout.EndHorizontal();
+        }
+
+        private void AddPreset()
+        {
+            SerializedObject serializedSettings = new(targetSettings);
+            SerializedProperty presetsProperty = serializedSettings.FindProperty("colourPresets");
+
+            if (presetsProperty == null)
+                return;
+
+            serializedSettings.Update();
+
+            Undo.RecordObject(targetSettings, "Add Pretty Hierarchy Preset");
+
+            presetsProperty.arraySize++;
+
+            SerializedProperty created = presetsProperty.GetArrayElementAtIndex(presetsProperty.arraySize - 1);
+            created.FindPropertyRelative("displayName").stringValue = "New Preset";
+            created.FindPropertyRelative("colour").colorValue = new Color(0.35f, 0.35f, 0.35f, 1f);
+            created.FindPropertyRelative("icon").objectReferenceValue = null;
+            created.FindPropertyRelative("builtinIcon").enumValueIndex = (int)HierarchyIconSettings.BuiltinIconType.None;
+
+            SerializedProperty showIconProperty = created.FindPropertyRelative("showIcon");
+
+            if (showIconProperty != null)
+                showIconProperty.boolValue = false;
+
+            serializedSettings.ApplyModifiedProperties();
+
+            MarkDirty();
+            ResizeToContent();
+        }
+
+        private void DrawPresetEditor()
+        {
+            SerializedObject serializedSettings = new(targetSettings);
+            SerializedProperty presetsProperty = serializedSettings.FindProperty("colourPresets");
+
+            serializedSettings.Update();
+
+            if (presetsProperty == null)
+            {
+                EditorGUILayout.HelpBox("Could not find colourPresets on HierarchyIconSettings.", MessageType.Error);
+                return;
+            }
+
+            for (int i = 0; i < presetsProperty.arraySize; i++)
+            {
+                SerializedProperty presetProperty = presetsProperty.GetArrayElementAtIndex(i);
+                DrawPresetEditorRow(serializedSettings, presetProperty, i);
+                EditorGUILayout.Space(2f);
+            }
+
+            serializedSettings.ApplyModifiedProperties();
+        }
+
+        private void DrawPresetEditorRow(
+            SerializedObject serializedSettings,
+            SerializedProperty presetProperty,
+            int index)
+        {
+            SerializedProperty displayNameProperty = presetProperty.FindPropertyRelative("displayName");
+            SerializedProperty colourProperty = presetProperty.FindPropertyRelative("colour");
+            SerializedProperty iconProperty = presetProperty.FindPropertyRelative("icon");
+            SerializedProperty builtinIconProperty = presetProperty.FindPropertyRelative("builtinIcon");
+            SerializedProperty showIconProperty = presetProperty.FindPropertyRelative("showIcon");
+
+            HierarchyIconSettings.ColourPreset runtimePreset = index >= 0 && index < targetSettings.ColourPresets.Count
+                ? targetSettings.ColourPresets[index]
+                : null;
+
+            if (showIconProperty != null)
+                showIconProperty.boolValue = HasPresetIcon(iconProperty, builtinIconProperty);
+
+            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+            EditorGUILayout.BeginHorizontal(GUILayout.Height(PresetRowHeight));
+
+            if (DrawAssignPresetButton(runtimePreset))
+            {
+                Undo.RecordObject(targetSettings, $"Assign {runtimePreset?.displayName} Pretty Hierarchy Preset");
+
+                serializedSettings.ApplyModifiedProperties();
+
+                targetSettings.ApplyPreset(targetObject, runtimePreset);
+                targetEntry = targetSettings.GetOrCreateObjectEntry(targetObject);
+
+                MarkDirty();
+            }
+
+            EditorGUILayout.BeginVertical();
+
+            EditorGUI.BeginChangeCheck();
+
+            EditorGUILayout.BeginHorizontal();
+            EditorGUILayout.PropertyField(displayNameProperty, GUIContent.none, GUILayout.MinWidth(170f));
+            EditorGUILayout.PropertyField(colourProperty, GUIContent.none, GUILayout.Width(88f));
+            EditorGUILayout.EndHorizontal();
+
+            EditorGUILayout.BeginHorizontal();
+            EditorGUILayout.PropertyField(iconProperty, GUIContent.none, GUILayout.MinWidth(190f));
+
+            HierarchyIconSettings.BuiltinIconType currentBuiltin =
+                (HierarchyIconSettings.BuiltinIconType)builtinIconProperty.enumValueIndex;
+
+            DrawBuiltinIconPopup(
+                GUIContent.none,
+                currentBuiltin,
+                selectedType =>
+                {
+                    Undo.RecordObject(targetSettings, "Edit Pretty Hierarchy Preset Built-in Icon");
+
+                    builtinIconProperty.enumValueIndex = (int)selectedType;
+
+                    if (selectedType != HierarchyIconSettings.BuiltinIconType.None)
+                        iconProperty.objectReferenceValue = null;
+
+                    if (showIconProperty != null)
+                        showIconProperty.boolValue = HasPresetIcon(iconProperty, builtinIconProperty);
+
+                    serializedSettings.ApplyModifiedProperties();
+                    MarkDirty();
+                },
+                GUILayout.MinWidth(150f));
+
+            EditorGUILayout.EndHorizontal();
+
+            if (EditorGUI.EndChangeCheck())
+            {
+                Undo.RecordObject(targetSettings, "Edit Pretty Hierarchy Colour Preset");
+
+                if (iconProperty.objectReferenceValue != null)
+                    builtinIconProperty.enumValueIndex = (int)HierarchyIconSettings.BuiltinIconType.None;
+
+                if (showIconProperty != null)
+                    showIconProperty.boolValue = HasPresetIcon(iconProperty, builtinIconProperty);
+
+                serializedSettings.ApplyModifiedProperties();
+                MarkDirty();
+            }
+
+            EditorGUILayout.EndVertical();
+
+            if (GUILayout.Button("×", GUILayout.Width(DeleteButtonWidth), GUILayout.Height(PresetRowHeight)))
+            {
+                Undo.RecordObject(targetSettings, "Remove Pretty Hierarchy Colour Preset");
+
+                presetProperty.DeleteCommand();
+                serializedSettings.ApplyModifiedProperties();
+
+                MarkDirty();
+                ResizeToContent();
+
+                EditorGUILayout.EndHorizontal();
+                EditorGUILayout.EndVertical();
+                return;
+            }
+
+            EditorGUILayout.EndHorizontal();
+            EditorGUILayout.EndVertical();
+        }
+
+        private static bool HasPresetIcon(SerializedProperty iconProperty, SerializedProperty builtinIconProperty)
+        {
+            bool hasCustomIcon = iconProperty.objectReferenceValue != null;
+            bool hasBuiltinIcon = builtinIconProperty.enumValueIndex != (int)HierarchyIconSettings.BuiltinIconType.None;
+
+            return hasCustomIcon || hasBuiltinIcon;
+        }
+
+        private bool DrawAssignPresetButton(HierarchyIconSettings.ColourPreset preset)
+        {
+            Rect rect = GUILayoutUtility.GetRect(
+                PreviewWidth,
+                PresetRowHeight,
+                GUILayout.Width(PreviewWidth),
+                GUILayout.Height(PresetRowHeight));
+
+            if (preset == null)
+                return GUI.Button(rect, "Assign");
+
+            if (GUI.Button(rect, GUIContent.none))
+                return true;
+
+            Rect colourRect = new(rect.x + 7f, rect.y + 6f, rect.width - 14f, 14f);
+            EditorGUI.DrawRect(colourRect, Color.black);
+            EditorGUI.DrawRect(new Rect(colourRect.x + 1f, colourRect.y + 1f, colourRect.width - 2f, colourRect.height - 2f), preset.colour);
+
+            Texture2D icon = preset.GetFinalIcon();
+
+            Rect iconRect = new(rect.x + 27f, rect.y + 25f, 16f, 16f);
+
+            if (icon != null)
+                GUI.DrawTexture(iconRect, icon, ScaleMode.ScaleToFit, true);
+
+            GUIStyle labelStyle = new(EditorStyles.miniBoldLabel)
+            {
+                alignment = TextAnchor.MiddleCenter
+            };
+
+            Rect labelRect = new(rect.x + 4f, rect.y + 38f, rect.width - 8f, 14f);
+            EditorGUI.LabelField(labelRect, "Assign", labelStyle);
+
+            return false;
+        }
+
+        private void DrawBuiltinIconPopup(
+            GUIContent label,
+            HierarchyIconSettings.BuiltinIconType currentType,
+            System.Action<HierarchyIconSettings.BuiltinIconType> selectedCallback,
+            params GUILayoutOption[] options)
+        {
+            Rect controlRect = EditorGUILayout.GetControlRect(false, EditorGUIUtility.singleLineHeight, options);
+
+            Rect popupRect = controlRect;
+
+            if (label != GUIContent.none)
+            {
+                Rect labelRect = new(
+                    controlRect.x,
+                    controlRect.y,
+                    EditorGUIUtility.labelWidth * 0.55f,
+                    controlRect.height);
+
+                popupRect = new(
+                    labelRect.xMax,
+                    controlRect.y,
+                    controlRect.width - labelRect.width,
+                    controlRect.height);
+
+                EditorGUI.LabelField(labelRect, label);
+            }
+
+            Texture2D selectedIcon = HierarchyIconSettings.GetBuiltinIcon(currentType);
+
+            GUIContent buttonContent = new(
+                currentType.ToString(),
+                selectedIcon);
+
+            if (GUI.Button(popupRect, buttonContent, EditorStyles.popup))
+            {
+                BuiltinIconDropdown.Open(
+                    popupRect,
+                    currentType,
+                    selectedCallback);
             }
         }
 
