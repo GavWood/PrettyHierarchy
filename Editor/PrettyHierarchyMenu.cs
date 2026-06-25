@@ -154,8 +154,8 @@ public static partial class PrettyHierarchy
     private sealed class PrettyHierarchyDialog : EditorWindow
     {
         private const float WindowWidth = 620f;
-        private const float HeaderHeight = 150f;
-        private const float PresetRowHeight = 54f;
+        private const float HeaderHeight = 180f;
+        private const float PresetRowHeight = 74f;
         private const float PreviewWidth = 70f;
         private const float DeleteButtonWidth = 24f;
         private const float FooterHeight = 48f;
@@ -177,6 +177,8 @@ public static partial class PrettyHierarchy
         {
             PrettyHierarchyDialog window = CreateInstance<PrettyHierarchyDialog>();
 
+            window.titleContent = new GUIContent("Pretty Hierarchy");
+
             float windowHeight = CalculateWindowHeight(settings);
 
             window.minSize = new Vector2(WindowWidth, windowHeight);
@@ -195,7 +197,7 @@ public static partial class PrettyHierarchy
 
             return Mathf.Clamp(
                 HeaderHeight + FooterHeight + 32f + (presetCount * (PresetRowHeight + 6f)),
-                360f,
+                400f,
                 MaxWindowHeight);
         }
 
@@ -250,7 +252,7 @@ public static partial class PrettyHierarchy
                 EditorGUILayout.ObjectField("Object", targetObject, typeof(GameObject), true);
 
             EditorGUILayout.Space(6f);
-            EditorGUILayout.LabelField("Current Row (Choose icon | Built-in Icon | Colour)", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField("Current Row", EditorStyles.boldLabel);
 
             DrawCurrentRowCompact();
 
@@ -260,7 +262,7 @@ public static partial class PrettyHierarchy
             DrawActionButtons();
 
             EditorGUILayout.Space(10f);
-            EditorGUILayout.LabelField("Colour Presets", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField("Presets", EditorStyles.boldLabel);
 
             DrawPresetEditor();
 
@@ -286,12 +288,6 @@ public static partial class PrettyHierarchy
                     targetEntry.builtinIcon = selectedType;
                     targetEntry.icon = null;
 
-                    if (selectedType != HierarchyIconSettings.BuiltinIconType.None)
-                        targetEntry.isSeparator = true;
-
-                    targetEntry.showSeparatorIcon =
-                        selectedType != HierarchyIconSettings.BuiltinIconType.None;
-
                     MarkDirty();
                 },
                 GUILayout.Width(ColumnBWidth));
@@ -313,7 +309,38 @@ public static partial class PrettyHierarchy
                 Undo.RecordObject(targetSettings, "Change Pretty Hierarchy Colour");
 
                 targetEntry.separatorColor = colour;
-                targetEntry.isSeparator = true;
+
+                MarkDirty();
+            }
+
+            GUILayout.FlexibleSpace();
+
+            EditorGUILayout.EndHorizontal();
+
+            EditorGUILayout.Space(4f);
+
+            EditorGUILayout.BeginHorizontal();
+
+            EditorGUI.BeginChangeCheck();
+
+            bool showColourBar = GUILayout.Toggle(
+                targetEntry.showColourBar,
+                "Bar",
+                GUILayout.Width(ColumnAWidth));
+
+            GUILayout.Space(ColumnGap);
+
+            bool showColourIcon = GUILayout.Toggle(
+                targetEntry.showColourIcon,
+                "Colour Icon",
+                GUILayout.Width(ColumnBWidth));
+
+            if (EditorGUI.EndChangeCheck())
+            {
+                Undo.RecordObject(targetSettings, "Change Pretty Hierarchy Colour Toggles");
+
+                targetEntry.showColourBar = showColourBar;
+                targetEntry.showColourIcon = showColourIcon;
 
                 MarkDirty();
             }
@@ -342,14 +369,7 @@ public static partial class PrettyHierarchy
             targetEntry.icon = newIcon;
 
             if (newIcon != null)
-            {
                 targetEntry.builtinIcon = HierarchyIconSettings.BuiltinIconType.None;
-                targetEntry.isSeparator = true;
-            }
-
-            targetEntry.showSeparatorIcon =
-                targetEntry.icon != null ||
-                targetEntry.builtinIcon != HierarchyIconSettings.BuiltinIconType.None;
 
             MarkDirty();
         }
@@ -375,11 +395,11 @@ public static partial class PrettyHierarchy
 
             GUILayout.Space(ColumnGap);
 
-            if (GUILayout.Button("Clear Separator", GUILayout.Width(ColumnCWidth), GUILayout.Height(22f)))
+            if (GUILayout.Button("Clear Colour", GUILayout.Width(ColumnCWidth), GUILayout.Height(22f)))
             {
-                Undo.RecordObject(targetSettings, "Clear Pretty Hierarchy Object Separator");
+                Undo.RecordObject(targetSettings, "Clear Pretty Hierarchy Object Colour");
 
-                targetSettings.ClearObjectSeparator(targetObject);
+                targetSettings.ClearObjectColour(targetObject);
                 targetEntry = targetSettings.GetOrCreateObjectEntry(targetObject);
 
                 MarkDirty();
@@ -417,15 +437,20 @@ public static partial class PrettyHierarchy
             presetsProperty.arraySize++;
 
             SerializedProperty created = presetsProperty.GetArrayElementAtIndex(presetsProperty.arraySize - 1);
+
             created.FindPropertyRelative("displayName").stringValue = "New Preset";
-            created.FindPropertyRelative("colour").colorValue = new Color(0.35f, 0.35f, 0.35f, 1f);
-            created.FindPropertyRelative("icon").objectReferenceValue = null;
-            created.FindPropertyRelative("builtinIcon").enumValueIndex = (int)HierarchyIconSettings.BuiltinIconType.None;
+            created.FindPropertyRelative("colour").colorValue = targetEntry.separatorColor;
+            created.FindPropertyRelative("icon").objectReferenceValue = targetEntry.icon;
+            created.FindPropertyRelative("builtinIcon").enumValueIndex = (int)targetEntry.builtinIcon;
 
-            SerializedProperty showIconProperty = created.FindPropertyRelative("showIcon");
+            SerializedProperty showColourBarProperty = created.FindPropertyRelative("showColourBar");
+            SerializedProperty showColourIconProperty = created.FindPropertyRelative("showColourIcon");
 
-            if (showIconProperty != null)
-                showIconProperty.boolValue = false;
+            if (showColourBarProperty != null)
+                showColourBarProperty.boolValue = targetEntry.showColourBar;
+
+            if (showColourIconProperty != null)
+                showColourIconProperty.boolValue = targetEntry.showColourIcon;
 
             serializedSettings.ApplyModifiedProperties();
 
@@ -457,154 +482,166 @@ public static partial class PrettyHierarchy
         }
 
         private void DrawPresetEditorRow(
-            SerializedObject serializedSettings,
-            SerializedProperty presetProperty,
-            int index)
+    SerializedObject serializedSettings,
+    SerializedProperty presetProperty,
+    int index)
+{
+    SerializedProperty displayNameProperty = presetProperty.FindPropertyRelative("displayName");
+    SerializedProperty colourProperty = presetProperty.FindPropertyRelative("colour");
+    SerializedProperty iconProperty = presetProperty.FindPropertyRelative("icon");
+    SerializedProperty builtinIconProperty = presetProperty.FindPropertyRelative("builtinIcon");
+    SerializedProperty showColourBarProperty = presetProperty.FindPropertyRelative("showColourBar");
+    SerializedProperty showColourIconProperty = presetProperty.FindPropertyRelative("showColourIcon");
+
+    HierarchyIconSettings.ColourPreset runtimePreset = index >= 0 && index < targetSettings.ColourPresets.Count
+        ? targetSettings.ColourPresets[index]
+        : null;
+
+    EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+    EditorGUILayout.BeginHorizontal(GUILayout.Height(PresetRowHeight));
+
+    if (DrawAssignPresetButton(runtimePreset))
+    {
+        Undo.RecordObject(targetSettings, $"Apply Pretty Hierarchy Preset");
+
+        serializedSettings.ApplyModifiedProperties();
+
+        targetSettings.ApplyPreset(targetObject, runtimePreset);
+        targetEntry = targetSettings.GetOrCreateObjectEntry(targetObject);
+
+        MarkDirty();
+    }
+
+    EditorGUILayout.BeginVertical();
+
+    EditorGUI.BeginChangeCheck();
+
+    EditorGUILayout.BeginHorizontal();
+    EditorGUILayout.PropertyField(displayNameProperty, GUIContent.none, GUILayout.MinWidth(150f));
+    EditorGUILayout.PropertyField(iconProperty, GUIContent.none, GUILayout.MinWidth(170f));
+    EditorGUILayout.EndHorizontal();
+
+    EditorGUILayout.BeginHorizontal();
+
+    HierarchyIconSettings.BuiltinIconType currentBuiltin =
+        (HierarchyIconSettings.BuiltinIconType)builtinIconProperty.enumValueIndex;
+
+    DrawBuiltinIconPopup(
+        GUIContent.none,
+        currentBuiltin,
+        selectedType =>
         {
-            SerializedProperty displayNameProperty = presetProperty.FindPropertyRelative("displayName");
-            SerializedProperty colourProperty = presetProperty.FindPropertyRelative("colour");
-            SerializedProperty iconProperty = presetProperty.FindPropertyRelative("icon");
-            SerializedProperty builtinIconProperty = presetProperty.FindPropertyRelative("builtinIcon");
-            SerializedProperty showIconProperty = presetProperty.FindPropertyRelative("showIcon");
+            Undo.RecordObject(targetSettings, "Edit Pretty Hierarchy Preset Built-in Icon");
 
-            HierarchyIconSettings.ColourPreset runtimePreset = index >= 0 && index < targetSettings.ColourPresets.Count
-                ? targetSettings.ColourPresets[index]
-                : null;
+            builtinIconProperty.enumValueIndex = (int)selectedType;
 
-            if (showIconProperty != null)
-                showIconProperty.boolValue = HasPresetIcon(iconProperty, builtinIconProperty);
+            if (selectedType != HierarchyIconSettings.BuiltinIconType.None)
+                iconProperty.objectReferenceValue = null;
 
-            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
-            EditorGUILayout.BeginHorizontal(GUILayout.Height(PresetRowHeight));
+            serializedSettings.ApplyModifiedProperties();
 
-            if (DrawAssignPresetButton(runtimePreset))
-            {
-                Undo.RecordObject(targetSettings, $"Assign {runtimePreset?.displayName} Pretty Hierarchy Preset");
+            if (runtimePreset != null)
+                targetSettings.RefreshObjectsUsingPreset(runtimePreset);
 
-                serializedSettings.ApplyModifiedProperties();
+            MarkDirty();
+        },
+        GUILayout.MinWidth(170f));
 
-                targetSettings.ApplyPreset(targetObject, runtimePreset);
-                targetEntry = targetSettings.GetOrCreateObjectEntry(targetObject);
+    GUILayout.FlexibleSpace();
 
-                MarkDirty();
-            }
+    EditorGUILayout.EndHorizontal();
 
-            EditorGUILayout.BeginVertical();
+    EditorGUILayout.BeginHorizontal();
 
-            EditorGUI.BeginChangeCheck();
+    GUILayout.Label("Colour:", GUILayout.Width(48f));
+    EditorGUILayout.PropertyField(colourProperty, GUIContent.none, GUILayout.Width(100f));
 
-            EditorGUILayout.BeginHorizontal();
-            EditorGUILayout.PropertyField(displayNameProperty, GUIContent.none, GUILayout.MinWidth(170f));
-            EditorGUILayout.PropertyField(colourProperty, GUIContent.none, GUILayout.Width(88f));
-            EditorGUILayout.EndHorizontal();
+    GUILayout.Space(12f);
 
-            EditorGUILayout.BeginHorizontal();
-            EditorGUILayout.PropertyField(iconProperty, GUIContent.none, GUILayout.MinWidth(190f));
+    if (showColourBarProperty != null)
+        showColourBarProperty.boolValue = EditorGUILayout.ToggleLeft("Bar", showColourBarProperty.boolValue, GUILayout.Width(55f));
 
-            HierarchyIconSettings.BuiltinIconType currentBuiltin =
-                (HierarchyIconSettings.BuiltinIconType)builtinIconProperty.enumValueIndex;
+    if (showColourIconProperty != null)
+        showColourIconProperty.boolValue = EditorGUILayout.ToggleLeft("Icon", showColourIconProperty.boolValue, GUILayout.Width(55f));
 
-            DrawBuiltinIconPopup(
-                GUIContent.none,
-                currentBuiltin,
-                selectedType =>
-                {
-                    Undo.RecordObject(targetSettings, "Edit Pretty Hierarchy Preset Built-in Icon");
+    GUILayout.FlexibleSpace();
 
-                    builtinIconProperty.enumValueIndex = (int)selectedType;
+    EditorGUILayout.EndHorizontal();
 
-                    if (selectedType != HierarchyIconSettings.BuiltinIconType.None)
-                        iconProperty.objectReferenceValue = null;
+    if (EditorGUI.EndChangeCheck())
+    {
+        Undo.RecordObject(targetSettings, "Edit Pretty Hierarchy Preset");
 
-                    if (showIconProperty != null)
-                        showIconProperty.boolValue = HasPresetIcon(iconProperty, builtinIconProperty);
+        if (iconProperty.objectReferenceValue != null)
+            builtinIconProperty.enumValueIndex = (int)HierarchyIconSettings.BuiltinIconType.None;
 
-                    serializedSettings.ApplyModifiedProperties();
-                    MarkDirty();
-                },
-                GUILayout.MinWidth(150f));
+        serializedSettings.ApplyModifiedProperties();
 
-            EditorGUILayout.EndHorizontal();
+        if (runtimePreset != null)
+            targetSettings.RefreshObjectsUsingPreset(runtimePreset);
 
-            if (EditorGUI.EndChangeCheck())
-            {
-                Undo.RecordObject(targetSettings, "Edit Pretty Hierarchy Colour Preset");
+        MarkDirty();
+    }
 
-                if (iconProperty.objectReferenceValue != null)
-                    builtinIconProperty.enumValueIndex = (int)HierarchyIconSettings.BuiltinIconType.None;
+    EditorGUILayout.EndVertical();
 
-                if (showIconProperty != null)
-                    showIconProperty.boolValue = HasPresetIcon(iconProperty, builtinIconProperty);
+    if (GUILayout.Button("×", GUILayout.Width(DeleteButtonWidth), GUILayout.Height(PresetRowHeight)))
+    {
+        Undo.RecordObject(targetSettings, "Remove Pretty Hierarchy Preset");
 
-                serializedSettings.ApplyModifiedProperties();
-                MarkDirty();
-            }
+        presetProperty.DeleteCommand();
+        serializedSettings.ApplyModifiedProperties();
 
-            EditorGUILayout.EndVertical();
+        MarkDirty();
+        ResizeToContent();
 
-            if (GUILayout.Button("×", GUILayout.Width(DeleteButtonWidth), GUILayout.Height(PresetRowHeight)))
-            {
-                Undo.RecordObject(targetSettings, "Remove Pretty Hierarchy Colour Preset");
+        EditorGUILayout.EndHorizontal();
+        EditorGUILayout.EndVertical();
+        return;
+    }
 
-                presetProperty.DeleteCommand();
-                serializedSettings.ApplyModifiedProperties();
+    EditorGUILayout.EndHorizontal();
+    EditorGUILayout.EndVertical();
+}
 
-                MarkDirty();
-                ResizeToContent();
+private bool DrawAssignPresetButton(HierarchyIconSettings.ColourPreset preset)
+{
+    Rect rect = GUILayoutUtility.GetRect(
+        PreviewWidth,
+        PresetRowHeight,
+        GUILayout.Width(PreviewWidth),
+        GUILayout.Height(PresetRowHeight));
 
-                EditorGUILayout.EndHorizontal();
-                EditorGUILayout.EndVertical();
-                return;
-            }
+    if (preset == null)
+        return GUI.Button(rect, GUIContent.none);
 
-            EditorGUILayout.EndHorizontal();
-            EditorGUILayout.EndVertical();
-        }
+    if (GUI.Button(rect, GUIContent.none))
+        return true;
 
-        private static bool HasPresetIcon(SerializedProperty iconProperty, SerializedProperty builtinIconProperty)
-        {
-            bool hasCustomIcon = iconProperty.objectReferenceValue != null;
-            bool hasBuiltinIcon = builtinIconProperty.enumValueIndex != (int)HierarchyIconSettings.BuiltinIconType.None;
+    Texture2D icon = preset.GetFinalIcon();
 
-            return hasCustomIcon || hasBuiltinIcon;
-        }
+    if (preset.showColourBar)
+    {
+        Rect colourRect = new(rect.x + 7f, rect.y + 8f, rect.width - 14f, 18f);
+        EditorGUI.DrawRect(colourRect, Color.black);
+        EditorGUI.DrawRect(
+            new Rect(colourRect.x + 1f, colourRect.y + 1f, colourRect.width - 2f, colourRect.height - 2f),
+            preset.colour);
+    }
 
-        private bool DrawAssignPresetButton(HierarchyIconSettings.ColourPreset preset)
-        {
-            Rect rect = GUILayoutUtility.GetRect(
-                PreviewWidth,
-                PresetRowHeight,
-                GUILayout.Width(PreviewWidth),
-                GUILayout.Height(PresetRowHeight));
+    Rect iconBackRect = new(rect.x + 25f, rect.y + 36f, 20f, 20f);
 
-            if (preset == null)
-                return GUI.Button(rect, "Assign");
+    if (preset.showColourIcon)
+        EditorGUI.DrawRect(iconBackRect, preset.colour);
 
-            if (GUI.Button(rect, GUIContent.none))
-                return true;
+    if (icon != null)
+    {
+        Rect iconRect = new(rect.x + 27f, rect.y + 38f, 16f, 16f);
+        GUI.DrawTexture(iconRect, icon, ScaleMode.ScaleToFit, true);
+    }
 
-            Rect colourRect = new(rect.x + 7f, rect.y + 6f, rect.width - 14f, 14f);
-            EditorGUI.DrawRect(colourRect, Color.black);
-            EditorGUI.DrawRect(new Rect(colourRect.x + 1f, colourRect.y + 1f, colourRect.width - 2f, colourRect.height - 2f), preset.colour);
-
-            Texture2D icon = preset.GetFinalIcon();
-
-            Rect iconRect = new(rect.x + 27f, rect.y + 25f, 16f, 16f);
-
-            if (icon != null)
-                GUI.DrawTexture(iconRect, icon, ScaleMode.ScaleToFit, true);
-
-            GUIStyle labelStyle = new(EditorStyles.miniBoldLabel)
-            {
-                alignment = TextAnchor.MiddleCenter
-            };
-
-            Rect labelRect = new(rect.x + 4f, rect.y + 38f, rect.width - 8f, 14f);
-            EditorGUI.LabelField(labelRect, "Assign", labelStyle);
-
-            return false;
-        }
-
+    return false;
+}
         private void DrawBuiltinIconPopup(
             GUIContent label,
             HierarchyIconSettings.BuiltinIconType currentType,

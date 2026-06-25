@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.0] - Ability to split colours between icon and bar
+
+Sometimes separators look odd buired in hierarchies so this lets you choose where you want them
+
 ## [1.1.0] - Changes to UI and the ability to set your own presets
 
 Ability to set your own presets.

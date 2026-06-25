@@ -99,54 +99,38 @@ public static partial class PrettyHierarchy
             IconSlotSize,
             selectionRect.height);
 
-        if (objectEntry != null && objectEntry.isSeparator)
-        {
-            DrawSeparator(selectionRect, obj, objectEntry, iconSlotRect);
-            HandleRowClick(selectionRect, iconSlotRect, obj, script);
-            return;
-        }
+        if (objectEntry != null && objectEntry.showColourBar)
+            DrawColourBar(selectionRect, obj, objectEntry);
 
         Texture2D icon = objectEntry != null
             ? objectEntry.GetFinalIcon()
             : GetComponentFallbackIcon(obj);
 
-        if (icon != null)
+        if (objectEntry != null && objectEntry.showColourIcon)
+        {
+            DrawColourIconSlot(iconSlotRect, objectEntry.separatorColor);
+
+            if (icon != null)
+                DrawIconTexture(iconSlotRect, icon);
+        }
+        else if (icon != null)
+        {
             DrawIcon(iconSlotRect, icon);
+        }
         else
+        {
             DrawAddIconHint(iconSlotRect);
+        }
 
         HandleRowClick(selectionRect, iconSlotRect, obj, script);
     }
 
-    private static void DrawSeparator(
+    private static void DrawColourBar(
         Rect selectionRect,
         GameObject obj,
-        HierarchyIconSettings.ObjectIconEntry entry,
-        Rect iconSlotRect)
+        HierarchyIconSettings.ObjectIconEntry entry)
     {
         EditorGUI.DrawRect(selectionRect, entry.separatorColor);
-
-        EditorGUI.DrawRect(
-            iconSlotRect,
-            EditorGUIUtility.isProSkin
-                ? new Color(0f, 0f, 0f, 0.22f)
-                : new Color(0f, 0f, 0f, 0.14f));
-
-        if (entry.showSeparatorIcon)
-        {
-            Texture2D icon = entry.GetFinalIcon();
-
-            if (icon != null)
-            {
-                Rect iconRect = new Rect(
-                    iconSlotRect.x + 1f,
-                    iconSlotRect.y + 1f,
-                    14f,
-                    14f);
-
-                GUI.DrawTexture(iconRect, icon, ScaleMode.ScaleToFit, true);
-            }
-        }
 
         separatorLabelStyle ??= new GUIStyle(EditorStyles.boldLabel)
         {
@@ -160,6 +144,17 @@ public static partial class PrettyHierarchy
         };
 
         EditorGUI.LabelField(selectionRect, obj.name, separatorLabelStyle);
+    }
+
+    private static void DrawColourIconSlot(Rect iconSlotRect, Color colour)
+    {
+        EditorGUI.DrawRect(iconSlotRect, colour);
+
+        EditorGUI.DrawRect(
+            iconSlotRect,
+            EditorGUIUtility.isProSkin
+                ? new Color(0f, 0f, 0f, 0.22f)
+                : new Color(0f, 0f, 0f, 0.14f));
     }
 
     private static Texture2D GetComponentFallbackIcon(GameObject obj)
@@ -247,10 +242,14 @@ public static partial class PrettyHierarchy
             : new Color(0.76f, 0.76f, 0.76f, 1f);
 
         EditorGUI.DrawRect(coverRect, coverColour);
+        DrawIconTexture(slotRect, icon);
+    }
 
+    private static void DrawIconTexture(Rect slotRect, Texture2D icon)
+    {
         Rect iconRect = new Rect(
-            coverRect.x + 1f,
-            coverRect.y + 1f,
+            slotRect.x + 1f,
+            slotRect.y + 1f,
             14f,
             14f);
 

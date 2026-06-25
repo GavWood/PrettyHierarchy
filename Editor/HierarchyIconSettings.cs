@@ -30,7 +30,10 @@ public sealed class HierarchyIconSettings : ScriptableObject
         public Color colour = new(0.35f, 0.35f, 0.35f, 1f);
         public Texture2D icon;
         public BuiltinIconType builtinIcon;
-        public bool showIcon = true;
+        public bool showColourBar = true;
+        public bool showColourIcon;
+
+        [SerializeField, HideInInspector] private bool showIcon = true;
 
         public Texture2D GetFinalIcon()
         {
@@ -38,6 +41,14 @@ public sealed class HierarchyIconSettings : ScriptableObject
                 return icon;
 
             return GetBuiltinIcon(builtinIcon);
+        }
+
+        public void UpgradeLegacyFlags()
+        {
+            if (showIcon)
+                showColourBar = true;
+
+            showIcon = false;
         }
     }
 
@@ -52,10 +63,13 @@ public sealed class HierarchyIconSettings : ScriptableObject
         public Texture2D icon;
         public BuiltinIconType builtinIcon;
 
-        [Header("Separator")]
-        public bool isSeparator;
+        [Header("Colour")]
+        public bool showColourBar;
         public Color separatorColor = new(0.35f, 0.35f, 0.35f, 1f);
-        public bool showSeparatorIcon;
+        public bool showColourIcon;
+
+        [SerializeField, HideInInspector] private bool isSeparator;
+        [SerializeField, HideInInspector] private bool showSeparatorIcon;
 
         public Texture2D GetFinalIcon()
         {
@@ -69,7 +83,20 @@ public sealed class HierarchyIconSettings : ScriptableObject
         {
             return icon == null &&
                    builtinIcon == BuiltinIconType.None &&
-                   !isSeparator;
+                   !showColourBar &&
+                   !showColourIcon;
+        }
+
+        public void UpgradeLegacyFlags()
+        {
+            if (isSeparator)
+                showColourBar = true;
+
+            if (showSeparatorIcon)
+                showColourIcon = true;
+
+            isSeparator = false;
+            showSeparatorIcon = false;
         }
     }
 
@@ -152,12 +179,16 @@ public sealed class HierarchyIconSettings : ScriptableObject
     {
         EnsureDefaultColourPresets();
         EnsurePresetIds();
+        UpgradeLegacyPresetEntries();
+        UpgradeLegacyObjectEntries();
     }
 
     private void OnValidate()
     {
         EnsureDefaultColourPresets();
         EnsurePresetIds();
+        UpgradeLegacyPresetEntries();
+        UpgradeLegacyObjectEntries();
         RefreshAllPresetLinkedObjects();
 
         EditorApplication.RepaintHierarchyWindow();
@@ -200,21 +231,44 @@ public sealed class HierarchyIconSettings : ScriptableObject
             EditorUtility.SetDirty(this);
     }
 
+    private void UpgradeLegacyPresetEntries()
+    {
+        if (colourPresets == null)
+            return;
+
+        for (int i = 0; i < colourPresets.Count; i++)
+            colourPresets[i]?.UpgradeLegacyFlags();
+    }
+
+    private void UpgradeLegacyObjectEntries()
+    {
+        if (objectEntries == null)
+            return;
+
+        for (int i = 0; i < objectEntries.Count; i++)
+            objectEntries[i]?.UpgradeLegacyFlags();
+    }
+
     private static List<ColourPreset> CreateDefaultColourPresets()
     {
         return new List<ColourPreset>
         {
-            CreatePreset("Debug", new Color(0.15f, 0.15f, 0.15f, 1f), BuiltinIconType.Editor),
-            CreatePreset("Networking", new Color(0.20f, 0.32f, 0.65f, 1f), BuiltinIconType.Anchor),
-            CreatePreset("Game Flow", new Color(0.42f, 0.24f, 0.58f, 1f), BuiltinIconType.Prefab),
-            CreatePreset("Scene", new Color(0.20f, 0.48f, 0.32f, 1f), BuiltinIconType.Folder),
-            CreatePreset("Config", new Color(0.65f, 0.35f, 0.15f, 1f), BuiltinIconType.Script),
-            CreatePreset("Permissions", new Color(0.58f, 0.20f, 0.20f, 1f), BuiltinIconType.Android),
-            CreatePreset("UI", new Color(0.15f, 0.45f, 0.55f, 1f), BuiltinIconType.Camera)
+            CreatePreset("Debug", new Color(0.15f, 0.15f, 0.15f, 1f), BuiltinIconType.Editor, true, false),
+            CreatePreset("Networking", new Color(0.20f, 0.32f, 0.65f, 1f), BuiltinIconType.Anchor, true, false),
+            CreatePreset("Game Flow", new Color(0.42f, 0.24f, 0.58f, 1f), BuiltinIconType.Prefab, true, false),
+            CreatePreset("Scene", new Color(0.20f, 0.48f, 0.32f, 1f), BuiltinIconType.Folder, true, false),
+            CreatePreset("Config", new Color(0.65f, 0.35f, 0.15f, 1f), BuiltinIconType.Script, false, true),
+            CreatePreset("Permissions", new Color(0.58f, 0.20f, 0.20f, 1f), BuiltinIconType.Android, false, true),
+            CreatePreset("UI", new Color(0.15f, 0.45f, 0.55f, 1f), BuiltinIconType.Camera, false, true)
         };
     }
 
-    private static ColourPreset CreatePreset(string displayName, Color colour, BuiltinIconType builtinIcon)
+    private static ColourPreset CreatePreset(
+        string displayName,
+        Color colour,
+        BuiltinIconType builtinIcon,
+        bool showColourBar,
+        bool showColourIcon)
     {
         return new ColourPreset
         {
@@ -222,7 +276,8 @@ public sealed class HierarchyIconSettings : ScriptableObject
             displayName = displayName,
             colour = colour,
             builtinIcon = builtinIcon,
-            showIcon = true
+            showColourBar = showColourBar,
+            showColourIcon = showColourIcon
         };
     }
 
@@ -345,11 +400,11 @@ public sealed class HierarchyIconSettings : ScriptableObject
 
     private static void ApplyPresetToEntry(ObjectIconEntry entry, ColourPreset preset)
     {
-        entry.isSeparator = true;
         entry.separatorColor = preset.colour;
-        entry.showSeparatorIcon = preset.showIcon;
         entry.icon = preset.icon;
         entry.builtinIcon = preset.icon != null ? BuiltinIconType.None : preset.builtinIcon;
+        entry.showColourBar = preset.showColourBar;
+        entry.showColourIcon = preset.showColourIcon;
     }
 
     public void ClearObjectIcon(GameObject obj)
@@ -366,7 +421,7 @@ public sealed class HierarchyIconSettings : ScriptableObject
         RemoveIfEmpty(entry);
     }
 
-    public void ClearObjectSeparator(GameObject obj)
+    public void ClearObjectColour(GameObject obj)
     {
         ObjectIconEntry entry = GetObjectEntry(obj);
 
@@ -374,8 +429,8 @@ public sealed class HierarchyIconSettings : ScriptableObject
             return;
 
         entry.presetId = string.Empty;
-        entry.isSeparator = false;
-        entry.showSeparatorIcon = false;
+        entry.showColourBar = false;
+        entry.showColourIcon = false;
 
         RemoveIfEmpty(entry);
     }
