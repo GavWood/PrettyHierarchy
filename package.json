@@ -1,9 +1,9 @@
 {
   "name": "com.baawolf.prettyhierarchy",
   "displayName": "PrettyHierarchy",
-  "version": "1.0.1",
+  "version": "1.2.1",
   "unity": "2021.3",
-  "description": "Organise large Unity scenes with custom hierarchy icons, coloured separators, and automatic component icons.\n\nInteraction:\n• Right-click the left icon area of any GameObject in the Hierarchy to open the Pretty Hierarchy menu (an icon does not need to be present).\n• Double-click an icon to open the first attached user script.\n\nSupports custom textures, built-in Unity icons, separator presets, and component-based icon assignment.",
+  "description": "Fixed Preset Override Persistence> Fixed preset override persistence so manual object customisations are preserved after project reloads while preset-linked objects continue to inherit preset updates.",
   "keywords": [
     "unity",
     "unity3d",
